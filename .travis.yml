@@ -1,0 +1,22 @@
+language: go
+
+go:
+  - 1.9.3
+
+env:
+  - "PATH=/home/travis/gopath/bin:$PATH"
+
+before_install:
+  - go get github.com/mitchellh/gox
+  - go get github.com/tcnksm/ghr
+
+script:
+  - gox -output "dist/{{.Dir}}_{{.OS}}_{{.Arch}}"
+
+deploy:
+  provider: script
+  script: ghr --username $GITHUB_USERNAME --token $GITHUB_TOKEN --replace --prerelease --debug $TRAVIS_TAG dist/
+  skip_cleanup: true
+  on:
+  
+tags: true

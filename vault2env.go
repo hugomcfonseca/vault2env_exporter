@@ -1,8 +1,9 @@
-package vault2env
+package main
 
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
@@ -14,9 +15,9 @@ const (
 )
 
 var (
-	vaultAddr   = flag.String("address", "http://vault:8200", "Vault URL")
+	vaultAddr   = flag.String("address", "http://localhost:8200", "Vault URL")
 	vaultToken  = flag.String("token", "", "Vault token")
-	vaultPrefix = flag.String("prefix", "/prefix", "Vault prefix")
+	vaultPrefix = flag.String("prefix", "", "Vault prefix")
 	vaultSecret = flag.String("secret", "", "Variable or path of variables")
 	isRecursive = flag.Bool("recursive", false, "Exports, or not, all variables inside Vault secret")
 	envPrefix   = flag.String("env-prefix", "VAULT_", "Sets a prefix to exported variables")
@@ -29,26 +30,60 @@ func main() {
 
 	flag.Parse()
 
+	if len(strings.TrimSpace(*vaultToken)) == 0 {
+		fmt.Print("No valid token.")
+		return
+	}
+
+	*vaultSecret = setSecretPath()
+
 	config := &vault.Config{
 		Address: *vaultAddr,
 	}
 
 	if vaultClient, err = vault.NewClient(config); err != nil {
-		fmt.Printf("Error creating Vault client...")
+		fmt.Print("Error creating Vault client...")
 		return
 	}
 
 	vaultClient.SetToken(*vaultToken)
+
+	_, err = readFromVault(*vaultSecret, *isRecursive)
 }
 
-// readFromVault ...
-func readFromVault() {
+// readFromVault function in progress...
+func readFromVault(path string, recursive bool) (bool, error) {
+	vault := vaultClient.Logical()
+	secrets, err := vault.Read(path)
 
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if secrets == nil {
+		secrets, err = vault.List(path)
+	}
+
+	log.Printf("%#v", *secrets)
+
+	return true, nil
 }
 
-// convertVaultToEnv Convert Vault characters
-func convertVaultToEnv(path string) string {
-	return strings.Trim(strings.ToUpper(strings.Replace(path, "/", "_", -1)), "_")
+func setSecretPath() string {
+	var secretPath string
+
+	if len(strings.Trim(*vaultPrefix, " ")) > 0 {
+		secretPath = "/secret" + *vaultPrefix + "/" + *vaultSecret
+	} else {
+		secretPath = "/secret" + "/" + *vaultSecret
+	}
+
+	return secretPath
+}
+
+// convertVaultToEnv converts a Vault variable to an environment variable
+func convertVaultToEnv(variable string) string {
+	return strings.Trim(strings.ToUpper(strings.Replace(variable, "/", "_", -1)), "_")
 }
 
 // exportToEnvironment exports a given variable to environment
