@@ -53,18 +53,23 @@ func main() {
 
 // readFromVault function in progress...
 func readFromVault(path string, recursive bool) (bool, error) {
-	vault := vaultClient.Logical()
-	secrets, err := vault.Read(path)
+	var err error
+	secret := new(vault.Secret)
+
+	vaultRequest := vaultClient.Logical()
+	secret, err = vaultRequest.Read(path)
 
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if secrets == nil {
-		secrets, err = vault.List(path)
+	if secret == nil {
+		secret, err = vaultRequest.List(path)
 	}
 
-	log.Printf("%#v", *secrets)
+	// now it's time to unmarshall data
+
+	log.Printf("%#v", secret.Data)
 
 	return true, nil
 }
