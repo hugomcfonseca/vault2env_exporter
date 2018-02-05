@@ -14,6 +14,10 @@ const (
 	version = "0.0.1-alpha"
 )
 
+type responseAPI struct {
+	RequestID string `json:",omitempty"`
+}
+
 var (
 	vaultAddr   = flag.String("address", "http://localhost:8200", "Vault URL")
 	vaultToken  = flag.String("token", "", "Vault token")
@@ -48,11 +52,13 @@ func main() {
 
 	vaultClient.SetToken(*vaultToken)
 
-	_, err = readFromVault(*vaultSecret, *isRecursive)
+	data, err := readFromVault(*vaultSecret)
+
+	_ = setEnvironmentVariable(data)
 }
 
 // readFromVault function in progress...
-func readFromVault(path string, recursive bool) (bool, error) {
+func readFromVault(path string) (*vault.Secret, error) {
 	var err error
 	secret := new(vault.Secret)
 
@@ -67,11 +73,28 @@ func readFromVault(path string, recursive bool) (bool, error) {
 		secret, err = vaultRequest.List(path)
 	}
 
-	// now it's time to unmarshall data
+	log.Printf("%#v", secret)
 
-	log.Printf("%#v", secret.Data)
+	return secret, nil
+}
 
-	return true, nil
+func setEnvironmentVariable(secret *vault.Secret) bool {
+	for key, value := range secret.Data {
+		switch val := value.(type) {
+		case string:
+			key = convertVaultToEnv(key)
+			_, _ = exportToEnvironment(key, fmt.Sprintf("%v", value))
+			fmt.Println(key, "is string", fmt.Sprintf("%v", value))
+		case []interface{}:
+			for index, value2 := range val {
+				fmt.Println(index, value2)
+			}
+		default:
+			fmt.Println(key, "is of unknown type")
+		}
+	}
+
+	return true
 }
 
 func setSecretPath() string {
@@ -96,8 +119,11 @@ func exportToEnvironment(envName string, envValue string) (bool, error) {
 	fmt.Printf("Setting up environment variable '%s'", envName)
 
 	if err := os.Setenv(envName, envValue); err != nil {
+		fmt.Print("test")
 		return false, err
 	}
+
+	fmt.Print("test")
 
 	return true, nil
 }
