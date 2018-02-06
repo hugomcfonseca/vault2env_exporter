@@ -116,14 +116,19 @@ func convertVaultToEnv(variable string) string {
 
 // exportToEnvironment exports a given variable to environment
 func exportToEnvironment(envName string, envValue string) (bool, error) {
+	if len(strings.TrimSpace(*envPrefix)) > 0 {
+		envName = *envPrefix + "_" + envName
+	}
+
 	fmt.Printf("Setting up environment variable '%s'", envName)
 
 	if err := os.Setenv(envName, envValue); err != nil {
-		fmt.Print("test")
 		return false, err
 	}
 
-	fmt.Print("test")
+	// @todo: set up a shell script here appending all environment variables and
+	// source it
+	// check it here http://craigwickesser.com/2015/02/golang-cmd-with-custom-environment/
 
 	return true, nil
 }
